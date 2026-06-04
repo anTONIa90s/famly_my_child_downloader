@@ -43,12 +43,14 @@ async function startDownload({
 }) {
     ensureDir(downloadDir);
 
-    const context = await chromium.launchPersistentContext(
-        path.join(__dirname, "famly-profile"),
-        {
-            headless: false
-        }
-    );
+    const path = require("path");
+    const { app } = require("electron");
+
+    const userDataDir = path.join(app.getPath("userData"), "famly-profile");
+
+    const context = await chromium.launchPersistentContext(userDataDir, {
+        headless: false
+    });
 
     const page = await context.newPage();
 
