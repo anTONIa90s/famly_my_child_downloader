@@ -1,18 +1,29 @@
 {
   "name": "famly-my-child-downloader",
   "version": "1.0.0",
-  "description": "",
+  "description": "Famly photo downloader",
+  "author": "Antonia Stenstad",
   "main": "main.js",
+  "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dist": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "build": {
+    "appId": "com.antoniastenstad.famlydownloader",
+    "productName": "Famly_Downloader",
+    "icon": "assets/icons/win/icon.ico",
+    "win": {
+      "target": "portable",
+      "icon": "assets/icons/win/icon.ico"
+    },
+    "artifactName": "${productName}.exe"
+  },
   "dependencies": {
-    "electron": "^42.3.3",
     "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "electron": "^42.3.3",
+    "electron-builder": "^26.8.1"
   }
 }
