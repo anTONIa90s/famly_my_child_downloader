@@ -3,42 +3,49 @@
 
 <head>
     <title>Famly Downloader</title>
-    <style>
-        body {
-            font-family: Arial;
-            padding: 20px;
-        }
-
-        button {
-            margin: 10px 0;
-            padding: 10px;
-        }
-
-        #log {
-            margin-top: 20px;
-            height: 300px;
-            overflow: auto;
-            background: #111;
-            color: #0f0;
-            padding: 10px;
-        }
-
-        #bar {
-            width: 100%;
-            height: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/styles.css">
 </head>
 
 <body>
 
     <h1>Famly Photo Downloader</h1>
 
-    <button id="folderBtn">Choose Folder</button>
-    <p id="folderPath">No folder selected</p>
+    <div class="controls-grid">
+        <!-- Row 1: folder picker -->
+        <div class="left">
+            <button id="folderBtn">Choose Folder</button>
+        </div>
+        <div class="right">
+            <p id="folderPath">No folder selected</p>
+        </div>
 
-    <button id="startBtn">Download Photos</button>
-    <button id="cancelBtn">Cancel</button>
+        <!-- Row 2: date range -->
+        <div class="left" style="align-self:center;">
+            <p style="margin:0">Date Range (optional):</p>
+        </div>
+        <div class="right">
+            <div class="dr-row">
+                <label class="dr-label" for="startDate">Start date:</label>
+                <input type="date" id="startDate" />
+            </div>
+
+            <div class="dr-row">
+                <label class="dr-label" for="endDate">End date:</label>
+                <input type="date" id="endDate" />
+            </div>
+        </div>
+
+        <!-- Row 3: action buttons -->
+        <div class="left">
+            <button id="startBtn">Download Photos</button>
+        </div>
+        <div class="right actions">
+            <button id="cancelBtn">Cancel</button>
+        </div>
+    </div>
+
+    <small>A browser window will open up and you´ll need to login. </small> </br>
+    <small>Then navigate to your child's profile and the download will run automatically.</small>
 
     <progress id="bar" value="0" max="100"></progress>
 

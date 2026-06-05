@@ -21,7 +21,24 @@ document.getElementById("startBtn").onclick = async () => {
 
     log("Starting download...");
 
-    window.api.startDownload(folder);
+    // read date inputs
+    const startDateVal = document.getElementById('startDate').value;
+    const endDateVal = document.getElementById('endDate').value;
+
+    let startDate = startDateVal ? new Date(startDateVal) : null;
+    let endDate = endDateVal ? new Date(endDateVal) : null;
+
+    // normalize endDate to end of day if provided
+    if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+        alert('Start date must be before end date');
+        return;
+    }
+
+    window.api.startDownload({ folder, startDate: startDate ? startDate.toISOString() : null, endDate: endDate ? endDate.toISOString() : null });
 };
 
 document.getElementById("cancelBtn").onclick = async () => {

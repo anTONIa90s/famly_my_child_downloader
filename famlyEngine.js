@@ -39,7 +39,9 @@ async function startDownload({
     downloadDir,
     onProgress = () => { },
     onImage = () => { },
-    signal
+    signal,
+    startDate,
+    endDate
 }) {
     ensureDir(downloadDir);
 
@@ -138,7 +140,28 @@ async function startDownload({
         // --------------------------------------------------
         // FINALIZE COLLECTION
         // --------------------------------------------------
-        const uniqueImages = deduplicateByImageId(collectedImages);
+
+        // if date filters are provided, filter collectedImages by createdAt
+        let filtered = collectedImages;
+
+        let startTs = startDate ? Date.parse(startDate) : null;
+        let endTs = endDate ? Date.parse(endDate) : null;
+
+        if (startTs || endTs) {
+            filtered = collectedImages.filter(img => {
+                if (!img || !img.createdAt) return false; // exclude images without timestamps when filtering
+
+                const t = Date.parse(img.createdAt);
+                if (Number.isNaN(t)) return false;
+
+                if (startTs && t < startTs) return false;
+                if (endTs && t > endTs) return false;
+
+                return true;
+            });
+        }
+
+        const uniqueImages = deduplicateByImageId(filtered);
 
         onProgress({
             stage: "collected",
@@ -159,10 +182,6 @@ async function startDownload({
 
                 if (!url || !id) continue;
 
-                //// const filePath = path.join(downloadDir, `${id}.jpg`);
-                // const timestamp = formatTimestamp(img.createdAt);
-                // const fileName = `${timestamp}_${id}.jpg`;
-                // const filePath = path.join(downloadDir, fileName);
                 const timestamp = formatTimestamp(img.createdAt);
                 // get current counter for this timestamp
                 const currentCount = timestampCounters.get(timestamp) || 0;
@@ -243,12 +262,6 @@ function formatTimestamp(isoString) {
         pad(d.getMonth() + 1) +
         "-" +
         pad(d.getDate())
-        // "_" +
-        // pad(d.getHours()) +
-        // "-" +
-        // pad(d.getMinutes()) +
-        // "-" +
-        // pad(d.getSeconds())
     );
 }
 

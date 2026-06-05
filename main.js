@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
 const { startDownload } = require("./famlyEngine");
 
@@ -19,6 +19,10 @@ function createWindow() {
 }
 
 app.whenReady().then(createWindow);
+// remove default application menu (File/Edit/View/Window)
+app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
+});
 
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
@@ -40,12 +44,28 @@ ipcMain.handle("select-folder", async () => {
 // --------------------------------------------------
 // Start download engine
 // --------------------------------------------------
-ipcMain.handle("start-download", async (event, folder) => {
+ipcMain.handle("start-download", async (event, arg) => {
+    // arg can be either a string (folder) for backward compatibility
+    // or an object: { folder, startDate, endDate }
+    let folder = null;
+    let startDate = null;
+    let endDate = null;
+
+    if (typeof arg === 'string') {
+        folder = arg;
+    } else if (arg && typeof arg === 'object') {
+        folder = arg.folder;
+        startDate = arg.startDate || null;
+        endDate = arg.endDate || null;
+    }
+
     currentAbortController = new AbortController();
 
     return startDownload({
         childId: "ec2074e3-c652-4176-afee-f6f174cd724e",
         downloadDir: folder,
+        startDate,
+        endDate,
         signal: currentAbortController.signal,
 
         onProgress: (data) => {
