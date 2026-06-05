@@ -12,12 +12,15 @@
   "build": {
     "appId": "com.antoniastenstad.famlydownloader",
     "productName": "Famly_Downloader",
-    "icon": "assets/icons/win/icon.ico",
     "win": {
       "target": "portable",
       "icon": "assets/icons/win/icon.ico"
     },
-    "artifactName": "${productName}.exe"
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icons/mac/icon.icns"
+    },
+    "artifactName": "${productName}-${os}.${ext}"
   },
   "dependencies": {
     "playwright": "^1.60.0"

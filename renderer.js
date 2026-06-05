@@ -40,6 +40,7 @@ window.api.onProgress((data) => {
 });
 
 window.api.onImage((img) => {
-    const fileName = img.filePath.split("\\").pop();
+    // const fileName = img.filePath.split("\\").pop(); // windows
+    const fileName = img.filePath.split(/[\\/]/).pop(); // cross-platform
     log("Downloaded: " + fileName);
 });
