@@ -7,11 +7,15 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "predist": "cross-env PLAYWRIGHT_BROWSERS_PATH=./build/playwright-browsers npx playwright install chromium",
+    "dist": "npm run predist && electron-builder"
   },
   "build": {
     "appId": "com.antoniastenstad.famlydownloader",
     "productName": "Famly_Downloader",
+    "extraResources": [
+      "build/playwright-browsers/**/*"
+    ],
     "win": {
       "target": "portable",
       "icon": "assets/icons/win/icon.ico"
@@ -26,6 +30,7 @@
     "playwright": "^1.60.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "electron": "^42.3.3",
     "electron-builder": "^26.8.1"
   }

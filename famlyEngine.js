@@ -1,7 +1,27 @@
-const { chromium } = require("playwright");
+const { chromium } = require("playwright-core");
 const fs = require("fs");
 const path = require("path");
 const timestampCounters = new Map();
+
+function findChromeExecutable() {
+    const candidates = [
+        process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser'
+    ].filter(Boolean);
+
+    const fs = require('fs');
+    for (const p of candidates) {
+        try {
+            if (fs.existsSync(p)) return p;
+        } catch (e) {
+            // ignore
+        }
+    }
+    return null;
+}
 
 function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
@@ -50,9 +70,19 @@ async function startDownload({
 
     const userDataDir = path.join(app.getPath("userData"), "famly-profile");
 
-    const context = await chromium.launchPersistentContext(userDataDir, {
-        headless: false
-    });
+    const launchOptions = { headless: false };
+    const systemChrome = findChromeExecutable();
+    if (systemChrome) {
+        launchOptions.executablePath = systemChrome;
+        console.log('Using system Chrome executable at ' + systemChrome);
+    } else {
+        launchOptions.channel = 'chrome';
+        console.warn('No explicit Chrome/Chromium executable found. Setting channel:"chrome" as fallback. Ensure Chrome is installed on the system.');
+    }
+
+    console.log('launchOptions:', { executablePath: launchOptions.executablePath || null, channel: launchOptions.channel || null, userDataDir });
+
+    const context = await chromium.launchPersistentContext(userDataDir, launchOptions);
 
     const page = await context.newPage();
 
