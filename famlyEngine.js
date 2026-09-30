@@ -1,7 +1,6 @@
 const { chromium } = require("playwright-core");
 const fs = require("fs");
 const path = require("path");
-const timestampCounters = new Map();
 
 function findChromeExecutable() {
     const candidates = [
@@ -27,24 +26,6 @@ function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
 
-function ensureDir(dir) {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-}
-
-function deduplicateByImageId(images) {
-    const map = new Map();
-
-    for (const img of images) {
-        if (img?.imageId) {
-            map.set(img.imageId, img);
-        }
-    }
-
-    return [...map.values()];
-}
-
 function throwIfCancelled(signal) {
     if (signal?.aborted) {
         throw new Error("DOWNLOAD_CANCELLED");
@@ -61,14 +42,15 @@ async function startDownload({
     onImage = () => { },
     signal,
     startDate,
-    endDate
+    endDate,
+    userDataDir
 }) {
-    ensureDir(downloadDir);
+    if (!downloadDir || !userDataDir) {
+        throw new Error("A download directory and profile directory are required.");
+    }
 
-    const path = require("path");
-    const { app } = require("electron");
-
-    const userDataDir = path.join(app.getPath("userData"), "famly-profile");
+    await fs.promises.mkdir(downloadDir, { recursive: true });
+    const timestampCounters = new Map();
 
     const launchOptions = { headless: false };
     const systemChrome = findChromeExecutable();
@@ -86,14 +68,14 @@ async function startDownload({
 
     const page = await context.newPage();
 
-    const collectedImages = [];
-
-    let cancelled = false;
+    const collectedImages = new Map();
+    const pendingResponseParses = new Set();
 
     // --------------------------------------------------
     // INTERCEPT REAL FAMLY API RESPONSES
     // --------------------------------------------------
-    page.on("response", async (response) => {
+    const onResponse = (response) => {
+        const parseResponse = async () => {
         try {
             if (signal?.aborted) return;
 
@@ -112,17 +94,26 @@ async function startDownload({
             }
 
             if (batch.length > 0) {
-                collectedImages.push(...batch);
+                for (const image of batch) {
+                    if (image?.imageId) collectedImages.set(image.imageId, image);
+                }
 
                 onProgress({
                     stage: "collecting",
-                    count: collectedImages.length
+                    count: collectedImages.size
                 });
             }
         } catch (e) {
             // ignore parse errors
         }
-    });
+        };
+
+        const pending = parseResponse();
+        pendingResponseParses.add(pending);
+        pending.finally(() => pendingResponseParses.delete(pending));
+    };
+
+    page.on("response", onResponse);
 
     try {
         // --------------------------------------------------
@@ -170,15 +161,17 @@ async function startDownload({
         // --------------------------------------------------
         // FINALIZE COLLECTION
         // --------------------------------------------------
+        page.off("response", onResponse);
+        await Promise.allSettled([...pendingResponseParses]);
 
         // if date filters are provided, filter collectedImages by createdAt
-        let filtered = collectedImages;
+        let filtered = Array.from(collectedImages.values());
 
         let startTs = startDate ? Date.parse(startDate) : null;
         let endTs = endDate ? Date.parse(endDate) : null;
 
         if (startTs || endTs) {
-            filtered = collectedImages.filter(img => {
+            filtered = filtered.filter(img => {
                 if (!img || !img.createdAt) return false; // exclude images without timestamps when filtering
 
                 const t = Date.parse(img.createdAt);
@@ -191,7 +184,7 @@ async function startDownload({
             });
         }
 
-        const uniqueImages = deduplicateByImageId(filtered);
+        const uniqueImages = filtered;
 
         onProgress({
             stage: "collected",
@@ -241,15 +234,21 @@ async function startDownload({
                     id
                 });
 
-                const res = await fetch(url);
+                const res = await fetch(url, { signal });
+                if (!res.ok) {
+                    throw new Error(`Image request failed with status ${res.status}`);
+                }
                 const buffer = await res.arrayBuffer();
+                throwIfCancelled(signal);
 
-                fs.writeFileSync(filePath, Buffer.from(buffer));
+                await fs.promises.writeFile(filePath, Buffer.from(buffer));
 
                 onImage({ id, filePath });
 
             } catch (err) {
-                if (err.message === "DOWNLOAD_CANCELLED") break;
+                if (signal?.aborted || err.message === "DOWNLOAD_CANCELLED" || err.name === "AbortError") {
+                    throw new Error("DOWNLOAD_CANCELLED");
+                }
 
                 onProgress({
                     stage: "error",
@@ -275,6 +274,7 @@ async function startDownload({
         throw err;
 
     } finally {
+        page.off("response", onResponse);
         await context.close();
     }
 }

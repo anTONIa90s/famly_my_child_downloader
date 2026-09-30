@@ -1,9 +1,20 @@
 let folder = null;
+let downloadInProgress = false;
+const MAX_LOG_LINES = 100;
+const logLines = [];
 
 const log = (msg) => {
     const div = document.getElementById("log");
-    div.innerHTML += msg + "<br>";
+    logLines.push(String(msg));
+    if (logLines.length > MAX_LOG_LINES) logLines.shift();
+    div.textContent = logLines.join("\n");
     div.scrollTop = div.scrollHeight;
+};
+
+const setDownloadInProgress = (inProgress) => {
+    downloadInProgress = inProgress;
+    document.getElementById("startBtn").disabled = inProgress;
+    document.getElementById("folderBtn").disabled = inProgress;
 };
 
 document.getElementById("folderBtn").onclick = async () => {
@@ -14,6 +25,8 @@ document.getElementById("folderBtn").onclick = async () => {
 };
 
 document.getElementById("startBtn").onclick = async () => {
+    if (downloadInProgress) return;
+
     if (!folder) {
         alert("Please select a folder first");
         return;
@@ -38,7 +51,13 @@ document.getElementById("startBtn").onclick = async () => {
         return;
     }
 
-    window.api.startDownload({ folder, startDate: startDate ? startDate.toISOString() : null, endDate: endDate ? endDate.toISOString() : null });
+    try {
+        setDownloadInProgress(true);
+        await window.api.startDownload({ folder, startDate: startDate ? startDate.toISOString() : null, endDate: endDate ? endDate.toISOString() : null });
+    } catch (error) {
+        setDownloadInProgress(false);
+        log(`Unable to start download: ${error.message}`);
+    }
 };
 
 document.getElementById("cancelBtn").onclick = async () => {
@@ -49,6 +68,10 @@ document.getElementById("cancelBtn").onclick = async () => {
 // progress updates
 window.api.onProgress((data) => {
     log(JSON.stringify(data));
+
+    if (["done", "cancelled", "error"].includes(data.stage)) {
+        setDownloadInProgress(false);
+    }
 
     if (data.current && data.total) {
         const pct = Math.round((data.current / data.total) * 100);
